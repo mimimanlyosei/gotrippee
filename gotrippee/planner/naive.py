@@ -47,3 +47,19 @@ def plan_route_naive(*, start, stops, distance_fn=None):
         stops=[start, *ordered_stops],
         distance_fn=distance_fn,
     )
+
+def plan_route_naive_round_trip(
+        *,
+        start: Location,
+        stops: Sequence[Location],
+        distance_fn: DistanceFn,
+) -> RoutePlan:
+    """
+    Naive planner that orders stops using nearest-neighbour and returns to start.
+    - If stops is empty, returns a plan with just [start] (0 legs).
+    """
+    if not stops:
+        return plan_route(stops=[start], distance_fn=distance_fn)
+    
+    ordered = order_stops_nearest_neighbour(stops=stops, distance_fn=distance_fn)
+    return plan_route(stops=[start, *ordered, start], distance_fn=distance_fn)

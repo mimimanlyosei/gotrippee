@@ -3,6 +3,8 @@ from __future__ import annotations
 from gotrippee.planner.naive import plan_route_naive, order_stops_nearest_neighbour
 from gotrippee.domain.models import Location, RoutePlan
 
+from unittest.mock import Mock
+
 import gotrippee.planner.naive as naive_mod
 
 
@@ -135,3 +137,112 @@ def test_plan_route_naive_returns_routeplan_and_uses_nn_ordering():
     # ---Assert---
     assert isinstance(plan, RoutePlan)
     assert plan.stops == [start, *expected] # <-- adjust attribute name if RoutePlan stores stops differently
+
+
+
+    # Ticket 005 - Round Trip
+
+def test_plan_route_naive_round_trip_delegates_ordering_and_planning(monkeypatch):
+    # --- Arrange ---
+    from unittest.mock import Mock
+    from gotrippee.domain.models import Location, RoutePlan
+    import gotrippee.planner.naive as naive_planner
+
+    start = Location(name="Start", latitude=0.0, longitude=0.0)
+    a = Location(name="A", latitude=1.0, longitude=1.0)
+    b = Location(name="B", latitude=2.0, longitude=2.0)
+    c = Location(name="C", latitude=3.0, longitude=3.0)
+    stops = [a, b, c]
+
+    distance_fn = Mock()
+
+    ordered = [b, a, c]
+
+    order_mock = Mock(return_value=ordered)
+    plan_mock = Mock()
+
+    monkeypatch.setattr(naive_planner, "order_stops_nearest_neighbour", order_mock)
+    monkeypatch.setattr(naive_planner, "plan_route", plan_mock)
+
+    expected_plan = Mock()
+    plan_mock.return_value = expected_plan
+
+    # ---Act---
+    result = naive_planner.plan_route_naive_round_trip(
+        start=start,
+        stops=stops,
+        distance_fn=distance_fn,
+    )
+
+    # --- Assert ---
+    order_mock.assert_called_once_with(stops=stops, distance_fn=distance_fn)
+    plan_mock.assert_called_once_with(
+        stops=[start, *ordered, start],
+        distance_fn=distance_fn,
+    )
+    assert result is expected_plan
+
+
+
+def test_plan_route_naive_round_trip_with_no_stops_plans_just_start(monkeypatch):
+    from unittest.mock import Mock
+    from gotrippee.domain.models import Location
+    import gotrippee.planner.naive as naive_planner
+
+    start = Location(name="Start", latitude=0.0, longitude=0.0)
+    distance_fn = Mock()
+
+    order_mock = Mock()
+    plan_mock = Mock()
+
+    monkeypatch.setattr(naive_planner, "order_stops_nearest_neighbour", order_mock)
+    monkeypatch.setattr(naive_planner, "plan_route", plan_mock)
+
+    expected_plan = Mock()
+    plan_mock.return_value = expected_plan
+    
+    result = naive_planner.plan_route_naive_round_trip(
+        start=start,
+        stops=[],
+        distance_fn=distance_fn,
+    )
+
+
+    order_mock.assert_not_called()
+    plan_mock.assert_called_once_with(stops=[start], distance_fn=distance_fn)
+    assert result is expected_plan
+
+
+
+def test_plan_route_naive_round_trip_integration_returns_to_start():
+    from gotrippee.domain.models import Location
+    from gotrippee.planner.naive import plan_route_naive_round_trip
+
+    start = Location(name="Start", latitude=0.0, longitude=0.0)
+    a = Location(name="A", latitude=1.0, longitude=1.0)
+    b = Location(name="B", latitude=2.0, longitude=2.0)
+
+    # Deterministic distance: use a simple lookup table
+    pairs = {
+        (start, a): (10.0, 10.0),
+        (start, b): (5.0, 5.0),
+        (a, b): (2.0, 2.0),
+        (b, a): (2.0, 2.0),
+        (a, start): (10.0, 10.0),
+        (b, start): (5.0, 5.0),
+    }
+
+    def distance_fn(x, y):
+        # Make symmetric fallback if your table isn’t fully populated
+        if (x, y) in pairs:
+            return pairs[(x, y)]
+        if (y, x) in pairs:
+            return pairs[(y, x)]
+        raise KeyError((x, y))
+
+    plan = plan_route_naive_round_trip(start=start, stops=[a, b], distance_fn=distance_fn)
+
+    # Assertions: adapt to your actual RoutePlan structure
+    assert plan.legs[0].start == start
+    assert plan.legs[-1].end == start
+    assert len(plan.legs) == 3  # 2 stops => 3 legs in a round trip
