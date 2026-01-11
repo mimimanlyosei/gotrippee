@@ -20,8 +20,9 @@ def _demo_distance_fn(pairs: Dict[Tuple[str, str], Tuple[float,float]]):
 
 
 def main() -> int:
-    print("GoTrippee Demo")
-    print("============")
+    title = "GoTrippee Demo"
+    print(title)
+    print("=" * len(title))
 
     start = Location(name="Start", latitude=0.0, longitude=0.0)
     a = Location(name="A", latitude=1.0, longitude=1.0)
@@ -56,7 +57,7 @@ def main() -> int:
 
     return 0
 
-if __name__ == "__man__":
+if __name__ == "__main__":
     raise SystemExit(main())
 
     
