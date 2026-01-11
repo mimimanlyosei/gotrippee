@@ -4,6 +4,8 @@ from collections.abc import Callable, Sequence
 
 from gotrippee.domain.models import Location
 
+from . import plan_route
+
 DistanceFn = Callable[[Location, Location], tuple[float, float]]
 
 
@@ -22,10 +24,10 @@ def order_stops_nearest_neighbour(
         current = ordered[-1]
 
         best_idx = 0
-        best_distance = distance_fn(current, remaining[0])[0]
+        best_distance, _ = distance_fn(current, remaining[0])
 
         for idx in range(1, len(remaining)):
-            d = distance_fn(current, remaining[idx])[0]
+            d, _ = distance_fn(current, remaining[idx])
             # Tie breaker: keep earlier in remaining list
             # (so only update on stricklt smaller)
             if d < best_distance:
@@ -35,3 +37,13 @@ def order_stops_nearest_neighbour(
         ordered.append(remaining.pop(best_idx))
 
     return ordered
+
+def plan_route_naive(*, start, stops, distance_fn=None):
+    ordered_stops = order_stops_nearest_neighbour(
+        stops=stops,
+        distance_fn=distance_fn,
+    )
+    return plan_route(
+        stops=[start, *ordered_stops],
+        distance_fn=distance_fn,
+    )
