@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 
-from gotrippee.domain.models import Location
+from gotrippee.domain.models import Location, RoutePlan
 
 from . import plan_route
 
