@@ -7,6 +7,8 @@ from unittest.mock import Mock
 
 import gotrippee.planner.naive as naive_mod
 
+import pytest
+
 
 
 def test_orders_stops_by_nearest_neighbour_from_first_stop():
@@ -66,13 +68,21 @@ def test_tie_breaker_is_deterministic_by_input_order():
 
 
 def test_plan_route_naive_orders_stops_then_call_plan_route(monkeypatch):
-    # --- Arrange---
-    start = "START"
-    stops = ["B", "A", "C"] # deliberately not ordered
+    from gotrippee.domain.models import Location
+    
+    # --- Arrange---    
+    start = Location(name="START", latitude=0.0, longitude=0.0)
 
-    distance_fn = lambda a, b: 1 # not used by this test directly
+    b = Location(name="B", latitude=2.0, longitude=2.0)
+    a = Location(name="A", latitude=1.0, longitude=1.0)
+    c = Location(name="C", latitude=3.0, longitude=3.0)
 
-    expected_ordered_stops = ["A", "B", "C"]
+    stops = [b, a, c] # deliberately not ordered
+
+    # DistanceFn contract: returns (distance_km, duration_minutes)
+    distance_fn = lambda x, y: (1.0, 1.0) # not used by this test directly
+
+    expected_ordered_stops = [a, b, c]
     sentinel_plan = object()
 
     calls = {
@@ -200,7 +210,7 @@ def test_plan_route_naive_round_trip_with_no_stops_plans_just_start(monkeypatch)
 
     expected_plan = Mock()
     plan_mock.return_value = expected_plan
-    
+
     result = naive_planner.plan_route_naive_round_trip(
         start=start,
         stops=[],
@@ -246,3 +256,58 @@ def test_plan_route_naive_round_trip_integration_returns_to_start():
     assert plan.legs[0].start == start
     assert plan.legs[-1].end == start
     assert len(plan.legs) == 3  # 2 stops => 3 legs in a round trip
+
+
+    # --- Ticket 007 - validation ---
+
+    def test_plan_route_naive_round_trip_raises_if_start_in_stops():
+        from gotrippee.domain.models import Location
+        from gotrippee.planner.naive import plan_route_naive_round_trip
+
+        start = Location(name="Start", latitude=0.0, longitude=0.0)
+
+        def distance_fn(a, b):
+            return (1.0, 1.0)
+        
+        with pytest.raises(ValueError, match="start.*stops|stops.*start"):
+            plan_route_naive_round_trip(
+                start=start,
+                stops=[start],
+                distance_fn=distance_fn
+            )
+
+
+def test_plan_route_naive_round_trip_raises_on_duplicate_stop_names():
+    from gotrippee.domain.models import Location
+    from gotrippee.planner.naive import plan_route_naive_round_trip
+
+    start = Location(name="Start", latitude=0.0,longitude=0.0)
+    a1 = Location(name="A", latitude=1.0, longitude=1.0)
+    a2 = Location(name="A", latitude=9.0, longitude=9.0) # Same name, different coords
+
+    def distance_fn(a, b):
+        return (1.0, 1.0)
+    
+    with pytest.raises(ValueError, match="duplicate"):
+        plan_route_naive_round_trip(
+            start=start,
+            stops=[a1, a2],
+            distance_fn=distance_fn,
+        )
+
+
+def test_plan_route_naive_raises_if_start_in_stops():
+    from gotrippee.domain.models import Location
+    from gotrippee.planner.naive import plan_route_naive
+
+    start = Location(name="Start", latitude=0.0, longitude=0.0)
+
+    def distance_fn(a, b):
+        return (1.0, 1.0)
+    
+    with pytest.raises(ValueError, match="start.*stops|stops.*start"):
+        plan_route_naive(
+            start=start,
+            stops=[start],
+            distance_fn=distance_fn,
+        )
