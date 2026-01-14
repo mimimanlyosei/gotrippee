@@ -19,6 +19,20 @@ def _demo_distance_fn(pairs: Dict[Tuple[str, str], Tuple[float,float]]):
     return distance_fn
 
 
+def _lookup_distance_km(
+    pairs: dict[tuple[str, str], tuple[float,float]],
+    a: Location,
+    b: Location,
+) -> float:
+    key = (a.name, b.name)
+    if key in pairs:
+        return pairs[key][0]
+    rev = (b.name, a.name)
+    if rev in pairs:
+        return pairs[rev][0]
+    raise KeyError(key)
+
+
 def main() -> int:
     title = "GoTrippee Demo"
     print(title)
@@ -48,15 +62,26 @@ def main() -> int:
     print(f"Total distance: {plan.total_distance_km:.1f} km")
     print(f"Total duration: {plan.total_duration_minutes:.0f} mins")
     print("Legs:")
-
+    
     for i, leg in enumerate(plan.legs, start=1):
         print(
             f"{i}. {leg.start.name} -> {leg.end.name} "
             f"({leg.distance_km:.1f} km, {leg.duration_minutes:.0f} mins)"
         )
 
+    print()
+    print("Why this order?")
+    current = start
+
+    # Explain each next choice usint the computed route legs
+    for leg in plan.legs:
+        d_km =leg.distance_km
+        print(f"- From {leg.start.name}, next was {leg.end.name} ({d_km:.1f} km)")
+
+
     return 0
 
+    
 if __name__ == "__main__":
     raise SystemExit(main())
 

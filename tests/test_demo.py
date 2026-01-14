@@ -13,6 +13,7 @@ def test_demo_main_prints_route_summary_and_returns_zero(capsys):
     assert "Total distance" in out
     assert "Total duration" in out
     assert "Legs:" in out
+    assert "Why this order?" in out
 
     # Optional: ensure we show a return to start
     assert "Start" in out
