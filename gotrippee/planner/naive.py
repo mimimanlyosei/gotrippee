@@ -41,7 +41,7 @@ def order_stops_nearest_neighbour(
         for idx in range(1, len(remaining)):
             d, _ = distance_fn(current, remaining[idx])
             # Tie breaker: keep earlier in remaining list
-            # (so only update on stricklt smaller)
+            # (so only update on strickly smaller)
             if d < best_distance:
                 best_distance = d
                 best_idx = idx
@@ -50,7 +50,12 @@ def order_stops_nearest_neighbour(
 
     return ordered
 
-def plan_route_naive(*, start, stops, distance_fn=None):
+def plan_route_naive(
+        *,
+        start: Location,
+        stops: Sequence[Location],
+        distance_fn: DistanceFn,
+        ) -> RoutePlan:
     _validate_start_and_stops(start=start, stops=stops)
     
     ordered_stops = order_stops_nearest_neighbour(
