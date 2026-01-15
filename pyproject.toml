@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Trippee route planning engine (Part 1 MVP)"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+  "request>=2.0",
+]
 
 [project.optional-dependencies]
 dev = [
